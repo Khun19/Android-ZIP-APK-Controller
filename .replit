@@ -18,3 +18,8 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+TERMUX_MCP_URL = "https://added-trains-beer-latex.trycloudflare.com/mcp"
