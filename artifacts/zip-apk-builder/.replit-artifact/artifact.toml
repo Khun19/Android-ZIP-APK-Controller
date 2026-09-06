@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "ZIP → APK Builder"
+description = "A secure remote web controller for an authenticated Android Termux Universal ZIP-to-APK Builder. It validates Android ZIP paths, monitors the phone-side Gradle build, and reports verified APK outputs without compiling or fabricating artifacts in Replit."
+version = "1.0.0"
+id = "artifacts/zip-apk-builder"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25443
+
+[services.development]
+run = "pnpm --filter @workspace/zip-apk-builder run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/zip-apk-builder", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/zip-apk-builder/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25443"
+BASE_PATH = "/"

@@ -1,22 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Secure controller API for an Android Termux ZIP-to-APK builder
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: builder
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
-      summary: Health check
-      description: Returns server health status
+      summary: API process health
       responses:
         "200":
           description: Healthy
@@ -24,13 +22,164 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /builder/connection:
+    get:
+      operationId: checkBuilderConnection
+      tags: [builder]
+      summary: Initialize MCP, verify its tool allowlist, and call health_check
+      responses:
+        "200":
+          description: Safe builder connection status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuilderConnection"
+        "502":
+          description: Builder unavailable or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /builder/build:
+    post:
+      operationId: startAndroidBuild
+      tags: [builder]
+      summary: Run the real build_project MCP tool for a validated Android ZIP path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AndroidBuildInput"
+      responses:
+        "200":
+          description: Completed and validated build
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildResult"
+        "400":
+          description: Invalid Android path or unsupported input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Termux or build failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "504":
+          description: Build timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
-
+          enum: [ok]
+    BuildState:
+      type: string
+      enum: [IDLE, UPLOADING, CONNECTING_TO_TERMUX, ANALYZING, BUILDING, VALIDATING_APK, SUCCESS, FAILED]
+    ApiError:
+      type: object
+      required: [error, code, state]
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        state:
+          $ref: "#/components/schemas/BuildState"
+        diagnostics:
+          type: array
+          items:
+            type: string
+    BuilderConnection:
+      type: object
+      required: [connected, status, tools, checkedAt]
+      properties:
+        connected:
+          type: boolean
+        status:
+          type: string
+          enum: [connected]
+        tools:
+          type: array
+          items:
+            type: string
+            enum: [health_check, get_environment, list_apk_outputs, build_project]
+        checkedAt:
+          type: string
+          format: date-time
+        environment:
+          type: object
+          additionalProperties: true
+    AndroidBuildInput:
+      type: object
+      additionalProperties: false
+      required: [androidZipPath]
+      properties:
+        androidZipPath:
+          type: string
+          minLength: 5
+          maxLength: 512
+          pattern: "^/(?:storage/emulated/0|sdcard)/(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9 _.,()@+\\-/]+\\.zip$"
+        developerMode:
+          type: boolean
+          default: false
+    ApkArtifact:
+      type: object
+      required: [filename, generatedAt, status]
+      properties:
+        filename:
+          type: string
+        phonePath:
+          type: string
+        sizeBytes:
+          type: ["number", "null"]
+        generatedAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+        sha256:
+          type: ["string", "null"]
+        downloadUrl:
+          type: ["string", "null"]
+    BuildTimelineItem:
+      type: object
+      required: [state, label, status]
+      properties:
+        state:
+          $ref: "#/components/schemas/BuildState"
+        label:
+          type: string
+        status:
+          type: string
+          enum: [complete, active, pending, failed]
+    BuildResult:
+      type: object
+      required: [state, message, artifact, timeline, logs]
+      properties:
+        state:
+          $ref: "#/components/schemas/BuildState"
+        message:
+          type: string
+        artifact:
+          $ref: "#/components/schemas/ApkArtifact"
+        timeline:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildTimelineItem"
+        logs:
+          type: array
+          items:
+            type: string

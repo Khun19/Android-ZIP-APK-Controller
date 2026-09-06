@@ -5,8 +5,10 @@
  * Secure controller API for an Android Termux ZIP-to-APK builder
  * OpenAPI spec version: 1.0.0
  */
-import type { HealthStatusStatus } from './healthStatusStatus';
 
-export interface HealthStatus {
-  status: HealthStatusStatus;
-}
+export type HealthStatusStatus = typeof HealthStatusStatus[keyof typeof HealthStatusStatus];
+
+
+export const HealthStatusStatus = {
+  ok: 'ok',
+} as const;

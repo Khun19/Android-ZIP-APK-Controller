@@ -5,8 +5,11 @@
  * Secure controller API for an Android Termux ZIP-to-APK builder
  * OpenAPI spec version: 1.0.0
  */
-import type { HealthStatusStatus } from './healthStatusStatus';
+import type { BuildState } from './buildState';
 
-export interface HealthStatus {
-  status: HealthStatusStatus;
+export interface ApiError {
+  error: string;
+  code: string;
+  state: BuildState;
+  diagnostics?: string[];
 }
